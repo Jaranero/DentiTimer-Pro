@@ -5,9 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>DentiTimer Pro Multi-Mode</title>
+    <title>DentiTimer Pro</title>
     
-    <link rel="manifest" href='data:application/json,{"name":"DentiTimer Pro","short_name":"DentiTimer","start_url":".","display":"standalone","background_color":"#f1f5f9","theme_color":"#3b82f6","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/3774/3774278.png","sizes":"512x512","type":"image/png"}]}'>
+    <link rel="manifest" href="manifest.json">
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registrado con éxito', reg))
+                    .catch(err => console.log('Error al registrar el Service Worker', err));
+            });
+        }
+    </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -70,6 +80,7 @@
             background: #3b82f6;
             color: white;
             box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+            transform: translateY(-2px);
         }
 
         .uv-active {
@@ -77,7 +88,7 @@
         }
 
         .waiting-bg {
-            background-color: rgba(59, 130, 246, 0.1) !important;
+            background-color: rgba(59, 130, 246, 0.15) !important;
         }
 
         #themeToggle {
@@ -90,7 +101,6 @@
 
     <div class="main-container w-full max-w-md py-4">
         
-        <!-- App Header con Toggle de Modo -->
         <div class="flex justify-between items-center mb-6 px-2">
             <div>
                 <p class="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Dentoestetica</p>
@@ -101,7 +111,6 @@
             </button>
         </div>
 
-        <!-- Mode Selectors -->
         <div class="grid grid-cols-3 gap-2 mb-2">
             <button onclick="setMode('auto')" id="tab-auto" class="btn-mode py-4 uppercase">Auto</button>
             <button onclick="setMode('selectivo')" id="tab-selectivo" class="btn-mode py-4 uppercase">Selectivo</button>
@@ -112,12 +121,10 @@
             <button onclick="setMode('feldespatica')" id="tab-feldespatica" class="btn-mode py-4 uppercase">Feldespática</button>
         </div>
 
-        <!-- Main Workspace -->
         <div id="mainCard" class="clinical-card flex-1 flex flex-col items-center justify-between p-8 relative overflow-hidden transition-all duration-500">
             
             <div id="statusText" class="text-blue-500 text-[11px] font-bold uppercase tracking-[0.25em]">Listo</div>
 
-            <!-- Progress Circle -->
             <div class="relative flex items-center justify-center w-full max-w-[260px] aspect-square">
                 <svg class="transform -rotate-90 w-full h-full">
                     <circle cx="50%" cy="50%" r="44%" stroke="var(--ring-bg)" stroke-width="10" fill="transparent" />
@@ -128,14 +135,12 @@
                 <div id="timerDisplay" class="absolute text-8xl font-semibold tabular-nums">00</div>
             </div>
 
-            <!-- Control Action -->
-            <button id="startBtn" onclick="startSequence()" class="w-full py-5 bg-blue-600 text-white rounded-3xl font-bold uppercase tracking-widest text-xs active:scale-95 transition-all shadow-xl shadow-blue-200">
+            <button id="startBtn" onclick="startSequence()" class="w-full py-5 bg-blue-600 text-white rounded-3xl font-bold uppercase tracking-widest text-xs active:scale-95 transition-all shadow-xl">
                 Iniciar Secuencia
             </button>
 
-            <!-- Bottom Progress -->
             <div class="w-full">
-                <div id="timeline" class="flex w-full h-2 bg-slate-200 rounded-full overflow-hidden mb-3"></div>
+                <div id="timeline" class="flex w-full h-2 bg-slate-300 rounded-full overflow-hidden mb-3"></div>
                 <div id="stepLabel" class="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest h-4">---</div>
             </div>
         </div>
@@ -152,31 +157,24 @@
         const circle = document.getElementById('progressCircle');
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // Alternar Temas
         function toggleTheme() {
             isDarkMode = !isDarkMode;
             const body = document.body;
             const icon = document.getElementById('themeIcon');
-            const btn = document.getElementById('startBtn');
-
             if (isDarkMode) {
                 body.classList.add('dark-mode');
                 icon.innerText = '☀️';
-                btn.classList.remove('shadow-blue-200');
-                btn.classList.add('shadow-slate-900');
             } else {
                 body.classList.remove('dark-mode');
                 icon.innerText = '🌙';
-                btn.classList.add('shadow-blue-200');
-                btn.classList.remove('shadow-slate-900');
             }
         }
 
-        // Motor de Sonido
         function playSound(type) {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
+            
             if (type === 'wait') {
                 osc.frequency.setValueAtTime(330, audioCtx.currentTime);
                 gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
@@ -253,11 +251,9 @@
                 finish(); return;
             }
             if (currentStepIndex > 0) await waitPeriod();
-
             const step = currentSequence[currentStepIndex];
             updateTimeline();
             playSound('start');
-            
             runTimer(step.t, step.l, step.uv, step.c, () => {
                 currentStepIndex++;
                 runStep();
@@ -270,12 +266,10 @@
                 const display = document.getElementById('timerDisplay');
                 const status = document.getElementById('statusText');
                 const card = document.getElementById('mainCard');
-                
                 card.classList.add('waiting-bg');
                 status.innerText = "Siguiente Etapa...";
                 status.style.color = "#3b82f6";
                 circle.style.color = isDarkMode ? "#1e293b" : "#cbd5e1";
-                
                 const interval = setInterval(() => {
                     display.innerText = `0${waitTime}`;
                     playSound('wait');
@@ -293,23 +287,19 @@
             const display = document.getElementById('timerDisplay');
             const status = document.getElementById('statusText');
             const card = document.getElementById('mainCard');
-            
             status.innerText = label;
             status.style.color = color;
             circle.style.color = color;
             document.getElementById('stepLabel').innerText = label;
             if(uv) card.classList.add('uv-active'); else card.classList.remove('uv-active');
-
             let time = sec;
             display.innerText = time < 10 ? `0${time}` : time;
-
             circle.style.transition = 'none';
             circle.style.strokeDashoffset = 1000;
             setTimeout(() => {
                 circle.style.transition = `stroke-dashoffset ${sec}s linear`;
                 circle.style.strokeDashoffset = 0;
             }, 50);
-
             countdown = setInterval(() => {
                 time--;
                 display.innerText = time < 10 ? `0${time}` : time;
@@ -343,7 +333,6 @@
         if ('wakeLock' in navigator) {
             navigator.wakeLock.request('screen').catch(()=>{});
         }
-
         setMode('disilicato');
     </script>
 </body>
